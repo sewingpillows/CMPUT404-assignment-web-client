@@ -29,6 +29,7 @@ def help():
 
 class HTTPResponse(object):
     def __init__(self, code=200, body=""):
+        print ("CTREATE", code)
         self.code = code
         self.body = body
 
@@ -36,20 +37,23 @@ class HTTPClient(object):
     #def get_host_port(self,url):
 
     def connect(self, host, port):
+        print ("CONNECTED")
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect((host, port))
-        return None
+        return self.socket
 
     def get_code(self, data):
-        return None
+        return int(data[0].split(' ')[1].strip())
+
 
     def get_headers(self,data):
-        return None
+        return re.split('\r\n\r\n', data, 1)[0].split('\n')
 
     def get_body(self, data):
-        return None
+        return re.split('\r\n\r\n', data, 1)[-1]
     
     def sendall(self, data):
+        print ("IN SEND"+ data)
         self.socket.sendall(data.encode('utf-8'))
         
     def close(self):
@@ -68,8 +72,18 @@ class HTTPClient(object):
         return buffer.decode('utf-8')
 
     def GET(self, url, args=None):
-        code = 500
-        body = ""
+        host, resource = re.sub('^https?:\/\/','', url).split('/', 1)
+        host, port = host.split(':', 1)
+        s = self.connect(host, int(port))
+        req = "GET /%s HTTP/1.1\r\n" % (resource)
+        hos = "HOST: %s\r\n\r\n" %  (host)
+        code = req+hos
+        self.sendall(code)
+        strData = self.recvall(s)
+        body = self.get_body(strData)
+        header = self.get_headers(strData)
+        code = self.get_code(header)
+        self.close()
         return HTTPResponse(code, body)
 
     def POST(self, url, args=None):
