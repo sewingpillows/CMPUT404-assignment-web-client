@@ -45,11 +45,12 @@ class HTTPClient(object):
     def get_port(self, host):
         if (re.fullmatch('^[^:]*:[^:]*', host)!=None):
             return host.split(':', 1)[-1]
-        return 80
+        return '80'
 
-    def get_resource(self, host):
-        if (host.find("/")>-1):
-            return host.split('/', 1)[-1]
+    def get_resource(self, url):
+        resource = re.sub('^https?:\/\/','', url)
+        if ('/' in resource):
+            return resource.split('/', 1)[1]
         return ''
 
     def get_request(self, host, resource):
@@ -86,15 +87,23 @@ class HTTPClient(object):
                 done = not part
         return buffer.decode('utf-8')
 
-    def GET(self, url, args=None):
+    def get_host(self, url):
+        host = re.sub('^https?:\/\/','', url).split('/', 1)[0]
+        return host
+
+    def get_host_port(self, url):
         host = re.sub('^https?:\/\/','', url).split('/', 1)[0]
         port = self.get_port(host)
-        resource = self.get_resource(host)
-        print ("GET ", host, port, resource)
+        host = re.sub(':'+port, '', host)
+        return (host, port)
+
+    def GET(self, url, args=None):
+        print ("URL "+ url)
+        host, port  = self.get_host_port(url)
+        resource = self.get_resource(url)
         s = self.connect(host, int(port))
         self.sendall(self.get_request(host, resource))
-        strData = self.recvall(s)
-        
+        strData = self.recvall(s)      
         body = self.get_body(strData)
         header = self.get_headers(strData)
         code = self.get_code(header)
