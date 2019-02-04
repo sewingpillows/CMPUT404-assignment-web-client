@@ -42,6 +42,21 @@ class HTTPClient(object):
         self.socket.connect((host, port))
         return self.socket
 
+    def get_port(self, host):
+        if (re.fullmatch('^[^:]*:[^:]*', host)!=None):
+            return host.split(':', 1)[-1]
+        return 80
+
+    def get_resource(self, host):
+        if (host.find("/")>-1):
+            return host.split('/', 1)[-1]
+        return ''
+
+    def get_request(self, host, resource):
+        req = "GET /%s HTTP/1.1\r\n" % (resource)
+        hos = "HOST: %s\r\n\r\n" %  (host)
+        return req+hos
+
     def get_code(self, data):
         return int(data[0].split(' ')[1].strip())
 
@@ -72,19 +87,20 @@ class HTTPClient(object):
         return buffer.decode('utf-8')
 
     def GET(self, url, args=None):
-        host, resource = re.sub('^https?:\/\/','', url).split('/', 1)
-        host, port = host.split(':', 1)
+        host = re.sub('^https?:\/\/','', url).split('/', 1)[0]
+        port = self.get_port(host)
+        resource = self.get_resource(host)
+        print ("GET ", host, port, resource)
         s = self.connect(host, int(port))
-        req = "GET /%s HTTP/1.1\r\n" % (resource)
-        hos = "HOST: %s\r\n\r\n" %  (host)
-        code = req+hos
-        self.sendall(code)
+        self.sendall(self.get_request(host, resource))
         strData = self.recvall(s)
+        
         body = self.get_body(strData)
         header = self.get_headers(strData)
         code = self.get_code(header)
         self.close()
         return HTTPResponse(code, body)
+
 
     def POST(self, url, args=None):
         code = 500
