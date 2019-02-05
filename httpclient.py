@@ -23,9 +23,13 @@ import socket
 import re
 # you may use urllib to encode data appropriately
 import urllib.parse
+from functools import lru_cache
 
 def help():
     print("httpclient.py [GET/POST] [URL]\n")
+
+
+
 
 class HTTPResponse(object):
     def __init__(self, code=200, body=""):
@@ -57,6 +61,24 @@ class HTTPClient(object):
         req = "GET /%s HTTP/1.1\r\n" % (resource)
         hos = "HOST: %s\r\n\r\n" %  (host)
         return req+hos
+
+    def utflen(self, s):
+        return len(s.encode('utf-8'))
+
+        #CITE LATE https://stackoverflow.com/questions/6714826/how-can-i-determine-the-byte-length-of-a-utf-8-encoded-string-in-python
+    def post_request(self, host, resource, args=None):
+        req = "POST /%s HTTP/1.1\r\n" % (resource)
+        hos = "HOST: %s\r\n" %  (host)
+        content = "Content-Type: application/x-www-form-urlencoded\r\n"
+        variables =''
+        print (args)
+        for arg in args:
+            variables += arg+'='+repr(args[arg])[1:-1]+'&'
+            print (variables)
+        variables = variables[:-2]
+        lwn = self.utf8len(variables)
+        contentlength = "Content-Length: %s\r\n" % str(lwn)
+        return req+hos+content+contentlength+"\r\n"+variables
 
     def get_code(self, data):
         return int(data[0].split(' ')[1].strip())
@@ -112,8 +134,18 @@ class HTTPClient(object):
 
 
     def POST(self, url, args=None):
-        code = 500
-        body = ""
+        print ("POST")
+        host, port  = self.get_host_port(url)
+        resource = self.get_resource(url)
+        data = self.post_request(host, resource, args)
+        print (data)
+        s = self.connect(host, int(port))
+        self.sendall(data)
+        strData = self.recvall(s)      
+        body = self.get_body(strData)
+        header = self.get_headers(strData)
+        code = self.get_code(header)
+        self.close()
         return HTTPResponse(code, body)
 
     def command(self, url, command="GET", args=None):
