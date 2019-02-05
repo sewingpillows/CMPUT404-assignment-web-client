@@ -72,11 +72,12 @@ class HTTPClient(object):
         content = "Content-Type: application/x-www-form-urlencoded\r\n"
         variables =''
         print (args)
-        for arg in args:
-            variables += arg+'='+repr(args[arg])[1:-1]+'&'
-            print (variables)
-        variables = variables[:-2]
-        lwn = self.utf8len(variables)
+        if (args != None):
+            for arg in args:
+                variables += arg+'='+repr(args[arg])[1:-1]+'&'
+                print (variables)
+            variables = variables[:-2]
+        lwn = self.utflen(variables)
         contentlength = "Content-Length: %s\r\n" % str(lwn)
         return req+hos+content+contentlength+"\r\n"+variables
 
