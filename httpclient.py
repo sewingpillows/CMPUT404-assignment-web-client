@@ -33,18 +33,24 @@ def help():
 
 class HTTPResponse(object):
     def __init__(self, code=200, body=""):
-        print ("CTREATE", code)
         self.code = code
         self.body = body
 
 class HTTPClient(object):
-    #def get_host_port(self,url):
 
     def connect(self, host, port):
         print ("CONNECTED")
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect((host, port))
-        return self.socket
+        try:
+            self.socket.connect((host, port))
+            return self.socket
+        except:
+            print ('''Could not connect with:
+                    host: %s 
+                    port: %s
+                terminating program''') % (host, port)
+            sys.exit(1)
+      
 
     def get_port(self, host):
         if (re.fullmatch('^[^:]*:[^:]*', host)!=None):
