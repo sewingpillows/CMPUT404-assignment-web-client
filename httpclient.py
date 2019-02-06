@@ -30,9 +30,9 @@
 import sys
 import socket
 import re
+import json
 # you may use urllib to encode data appropriately
 import urllib.parse
-from functools import lru_cache
 
 def help():
     print("httpclient.py [GET/POST] [URL]\n")
@@ -82,9 +82,9 @@ class Request(object):
         variables =''
         if (args != None):
             for arg in args:
-                variables += arg+'='+repr(args[arg])[1:-1]+'&'
-        variables = variables[:-2]
-        self.request['body'] = variables
+                variables += arg+'='+args[arg]+'&'
+        variables = variables
+        self.request['payload'] = variables
 
     def get_body(self):
         return self.request['payload']
@@ -121,7 +121,6 @@ class HTTPClient(object):
         port = re.search(':([0-9]+)', url)
         if (port == None):
             return 80
-        print ("found port",port.group(1))
         return int(port.group(1))
 
     def get_resource(self, url):
@@ -176,11 +175,9 @@ class HTTPClient(object):
         return host.group(1)
 
     def GET(self, url, args=None):
-
         host = self.get_host(url)
         port = self.get_port(url)
         resource = self.get_resource(url)
-        print (resource, host, port)
         s = self.connect(host, port)
         data =self.get_request(host, resource)
         self.sendall(data)
