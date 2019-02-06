@@ -18,6 +18,15 @@
 # Write your own HTTP GET and POST
 # The point is to understand what you have to send and get experience with it
 
+
+############################
+# Sources
+# stackoverflow
+# TITLE: How can I determine the byte length of a utf-8 encoded string in Python?
+# URL:  https://stackoverflow.com/questions/6714826/how-can-i-determine-the-byte-length-of-a-utf-8-encoded-string-in-python
+# ANSWER: https://stackoverflow.com/a/6714872
+# AUTHOR: Mark Reed - https://stackoverflow.com/users/797049/mark-reed
+
 import sys
 import socket
 import re
@@ -30,32 +39,90 @@ def help():
 
 
 
-
 class HTTPResponse(object):
     def __init__(self, code=200, body=""):
         self.code = code
         self.body = body
 
+# Object to help build the response
+class Request(object):
+    def __init__(self):
+        self.request = {}
+        self.set_values()
+
+    def set_values(self):
+        self.request['init_header'] = ''
+        self.request['header'] = ''
+        self.request['payload'] = ''
+
+    def toString(self):
+        packet = self.request['init_header']
+        packet += self.request['header']+"\r\n"
+        packet += self.request['payload']
+        return packet
+
+    def init_header(self, method, resource):
+        line = "%s /%s HTTP/1.1\r\n" % (method, resource)
+        self.request['init_header'] = line
+
+    def add_content_length(self):
+        size = self.get_utflen()
+        line = "Content-Length: %s\r\n" % str(size)    
+        self.request['header'] = self.request['header']+line
+
+    def add_host(self, host):
+        line = "HOST: %s\r\n" %  (host)
+        self.request['header'] = self.request['header']+line
+
+    def add_contentType(self):
+        line = "Content-Type: application/x-www-form-urlencoded\r\n"
+        self.request['header'] = self.request['header']+line
+
+    def add_post_args(self, args):
+        variables =''
+        if (args != None):
+            for arg in args:
+                variables += arg+'='+repr(args[arg])[1:-1]+'&'
+        variables = variables[:-2]
+        self.request['body'] = variables
+
+    def get_body(self):
+        return self.request['payload']
+
+    def get_header(self):
+        return  self.request['init_header']+self.request['header']  
+
+    def get_utflen(self):
+        strBody = self.get_body()
+        return len(strBody.encode('utf-8'))
+
+    def clear(self):
+        self.request.clear()
+        self.set_values()
+
 class HTTPClient(object):
 
+    def __init__(self):
+        self.request = Request()
+
     def connect(self, host, port):
-        print ("CONNECTED")
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             self.socket.connect((host, port))
             return self.socket
         except:
-            print ('''Could not connect with:
-                    host: %s 
-                    port: %s
-                terminating program''') % (host, port)
+            print ('Could not connect with:')
+            print ('\thost: ' +host)
+            print ('\tport: ',port)
+            print ('terminating program')
             sys.exit(1)
       
-
-    def get_port(self, host):
-        if (re.fullmatch('^[^:]*:[^:]*', host)!=None):
-            return host.split(':', 1)[-1]
-        return '80'
+    def get_port(self, url):
+        port = re.search(':([0-9]+)', url)
+        if (port == None):
+            return 80
+        print ("found port",port.group(1))
+        return int(port.group(1))
 
     def get_resource(self, url):
         resource = re.sub('^https?:\/\/','', url)
@@ -64,32 +131,21 @@ class HTTPClient(object):
         return ''
 
     def get_request(self, host, resource):
-        req = "GET /%s HTTP/1.1\r\n" % (resource)
-        hos = "HOST: %s\r\n\r\n" %  (host)
-        return req+hos
+        self.request.init_header("GET", resource)
+        self.request.add_host(host)
+        return self.request.toString()
 
-    def utflen(self, s):
-        return len(s.encode('utf-8'))
-
-        #CITE LATE https://stackoverflow.com/questions/6714826/how-can-i-determine-the-byte-length-of-a-utf-8-encoded-string-in-python
     def post_request(self, host, resource, args=None):
-        req = "POST /%s HTTP/1.1\r\n" % (resource)
-        hos = "HOST: %s\r\n" %  (host)
-        content = "Content-Type: application/x-www-form-urlencoded\r\n"
-        variables =''
-        print (args)
+        self.request.init_header("POST", resource)
+        self.request.add_host(host)
+        self.request.add_contentType()
         if (args != None):
-            for arg in args:
-                variables += arg+'='+repr(args[arg])[1:-1]+'&'
-                print (variables)
-            variables = variables[:-2]
-        lwn = self.utflen(variables)
-        contentlength = "Content-Length: %s\r\n" % str(lwn)
-        return req+hos+content+contentlength+"\r\n"+variables
+            self.request.add_post_args(args)
+        self.request.add_content_length()
+        return self.request.toString()
 
     def get_code(self, data):
         return int(data[0].split(' ')[1].strip())
-
 
     def get_headers(self,data):
         return re.split('\r\n\r\n', data, 1)[0].split('\n')
@@ -98,7 +154,6 @@ class HTTPClient(object):
         return re.split('\r\n\r\n', data, 1)[-1]
     
     def sendall(self, data):
-        print ("IN SEND"+ data)
         self.socket.sendall(data.encode('utf-8'))
         
     def close(self):
@@ -117,42 +172,40 @@ class HTTPClient(object):
         return buffer.decode('utf-8')
 
     def get_host(self, url):
-        host = re.sub('^https?:\/\/','', url).split('/', 1)[0]
-        return host
-
-    def get_host_port(self, url):
-        host = re.sub('^https?:\/\/','', url).split('/', 1)[0]
-        port = self.get_port(host)
-        host = re.sub(':'+port, '', host)
-        return (host, port)
+        host = re.search('https?:\/\/((?:[a-zA-Z0-9]*\.[a-zA-Z0-9]*)*)', url)
+        return host.group(1)
 
     def GET(self, url, args=None):
-        print ("URL "+ url)
-        host, port  = self.get_host_port(url)
-        resource = self.get_resource(url)
-        s = self.connect(host, int(port))
-        self.sendall(self.get_request(host, resource))
-        strData = self.recvall(s)      
-        body = self.get_body(strData)
-        header = self.get_headers(strData)
-        code = self.get_code(header)
-        self.close()
-        return HTTPResponse(code, body)
 
-
-    def POST(self, url, args=None):
-        print ("POST")
-        host, port  = self.get_host_port(url)
+        host = self.get_host(url)
+        port = self.get_port(url)
         resource = self.get_resource(url)
-        data = self.post_request(host, resource, args)
-        print (data)
-        s = self.connect(host, int(port))
+        print (resource, host, port)
+        s = self.connect(host, port)
+        data =self.get_request(host, resource)
         self.sendall(data)
         strData = self.recvall(s)      
         body = self.get_body(strData)
         header = self.get_headers(strData)
         code = self.get_code(header)
         self.close()
+        self.request.clear()
+        return HTTPResponse(code, body)
+
+
+    def POST(self, url, args=None):
+        host = self.get_host(url)
+        port = self.get_port(url)
+        resource = self.get_resource(url)
+        data = self.post_request(host, resource, args)
+        s = self.connect(host, port)
+        self.sendall(data)
+        strData = self.recvall(s)      
+        body = self.get_body(strData)
+        header = self.get_headers(strData)
+        code = self.get_code(header)
+        self.close()
+        self.request.clear()
         return HTTPResponse(code, body)
 
     def command(self, url, command="GET", args=None):
