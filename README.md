@@ -18,3 +18,12 @@ examples thus some of the code is Copyright © 2001-2013 Python
 Software Foundation; All Rights Reserved under the PSF license (GPL
 compatible) http://docs.python.org/2/library/socketserver.html
 
+
+Sources
+========================
+stackoverflow
+TITLE: How can I determine the byte length of a utf-8 encoded string in Python?
+URL:  https://stackoverflow.com/questions/6714826/how-can-i-determine-the-byte-length-of-a-utf-8-encoded-string-in-python
+ANSWER: https://stackoverflow.com/a/6714872
+AUTHOR: Mark Reed - https://stackoverflow.com/users/797049/mark-reed
+
