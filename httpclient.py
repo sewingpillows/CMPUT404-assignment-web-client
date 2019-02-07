@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding: utf-8
 # Copyright 2019 Allison Boukall (based on framework provided by Abram Hindle)
-# Allison Boukall - 404 Assignment 1 submission
+# Allison Boukall - 404 Assignment 2 submission
 #
 #
 #
@@ -186,7 +186,7 @@ class HTTPClient(object):
 
     def get_host(self, url):
         host = re.search('https?:\/\/((?:[a-zA-Z0-9]*\.[a-zA-Z0-9]*)*)', url)
-        return host.group(1)""
+        return host.group(1)
 
     def GET(self, url, args=None):
         host = self.get_host(url)
